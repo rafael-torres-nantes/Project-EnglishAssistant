@@ -1,4 +1,6 @@
 import logging
+from typing import Iterator
+
 from services.claude_cli_service import ClaudeCLIService
 from services.gemini_cli_service import GeminiCLIService
 from config.settings import Settings
@@ -37,6 +39,20 @@ class ResponseService:
         except Exception as e:
             logger.error("Error generating response: %s", e)
             return f"Error generating response: {str(e)}"
+
+    def generate_response_stream(self, transcribed_text: str, context: str) -> Iterator[str]:
+        """Gera a resposta da IA em streaming, repassando os pedaços assim que chegam.
+
+        Args:
+            transcribed_text: Texto transcrito da fala capturada na reunião.
+            context: Conteúdo de contexto carregado da pasta de contexto.
+
+        Yields:
+            Pedaços de texto da resposta da IA.
+        """
+        system_prompt = self._build_system_prompt(context)
+        prompt = self._build_prompt(transcribed_text, context)
+        yield from self.ai_service.run_text_stream(prompt, system_prompt)
 
     def stop(self) -> None:
         logger.info("Response service stopped.")

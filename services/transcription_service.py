@@ -8,10 +8,11 @@ from utils.audio_helpers import AudioHelpers
 logger = logging.getLogger(__name__)
 
 class TranscriptionService:
-    def __init__(self, model_size: str = Settings.WHISPER_MODEL_SIZE, language: str = Settings.WHISPER_LANGUAGE, compute_type: str = Settings.WHISPER_COMPUTE_TYPE):
+    def __init__(self, model_size: str = Settings.WHISPER_MODEL_SIZE, language: str = Settings.WHISPER_LANGUAGE, compute_type: str = Settings.WHISPER_COMPUTE_TYPE, beam_size: int = Settings.WHISPER_BEAM_SIZE):
         logger.info("Carregando modelo de transcrição '%s'...", model_size)
         self.model = WhisperModel(model_size, device="cpu", compute_type=compute_type)
         self.language = language
+        self.beam_size = beam_size
 
     def audio_bytes_to_ndarray(self, audio_data: bytes, sample_rate: int = 16000, channels: int = 1) -> np.ndarray:
         return AudioHelpers.pcm_to_float32(audio_data, sample_rate, channels)
@@ -39,7 +40,7 @@ class TranscriptionService:
         segments, _ = self.model.transcribe(
             audio_array,
             language=self.language,
-            beam_size=5,
+            beam_size=self.beam_size,
             vad_filter=True
         )
 

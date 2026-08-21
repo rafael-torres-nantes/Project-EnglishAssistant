@@ -14,18 +14,20 @@ logger = logging.getLogger(__name__)
 
 class Settings:
     DEFAULT_AI_PROVIDER = os.environ.get("AI_PROVIDER", "claude")
-    DEFAULT_CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL", "sonnet")
+    DEFAULT_CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL", "haiku")
     DEFAULT_GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-high")
     DEFAULT_TIMEOUT = 180
     DEFAULT_BUDGET_USD = 0.50
+    STREAMING = os.environ.get("STREAMING", "False").strip().lower() == "true"
     AUDIO_SAMPLE_RATE = 16000
     AUDIO_CHANNELS = 1
     AUDIO_CHUNK_DURATION_SECONDS = 0.5
     SILENCE_THRESHOLD = 500
     SILENCE_TIMEOUT_SECONDS = 1.0
-    WHISPER_MODEL_SIZE = os.environ.get("WHISPER_MODEL_SIZE", "medium")
+    WHISPER_MODEL_SIZE = os.environ.get("WHISPER_MODEL_SIZE", "small")
     WHISPER_LANGUAGE = os.environ.get("WHISPER_LANGUAGE", "en")
     WHISPER_COMPUTE_TYPE = "int8"
+    WHISPER_BEAM_SIZE = int(os.environ.get("WHISPER_BEAM_SIZE", "1"))
     INPUT_DATA_DIR = Path("input_data")
     OUTPUT_DIR = Path("output")
     HTTP_HOST = "127.0.0.1"

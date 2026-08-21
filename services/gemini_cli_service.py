@@ -2,6 +2,7 @@ import logging
 import subprocess
 import json
 from pathlib import Path
+from typing import Iterator
 
 from config.settings import Settings
 
@@ -39,6 +40,22 @@ class GeminiCLIService:
         except subprocess.CalledProcessError as e:
             logger.error("Gemini CLI failed: %s", e.stderr)
             raise
+
+    def run_text_stream(self, prompt: str, system_prompt: str) -> Iterator[str]:
+        """Gera a resposta em texto sem streaming real (produz um único pedaço).
+
+        O agy.exe (Antigravity/Gemini CLI) não tem um formato de streaming
+        incremental mapeado neste projeto; a resposta completa é entregue como
+        um único pedaço, mantendo a mesma interface do ClaudeCLIService.
+
+        Args:
+            prompt: Texto enviado como entrada do usuário.
+            system_prompt: Instrução de sistema.
+
+        Yields:
+            A resposta completa como um único pedaço de texto.
+        """
+        yield self.run_text(prompt, system_prompt)
 
     def run_json(self, prompt: str, system_prompt: str) -> dict:
         cmd = self._build_command(prompt, system_prompt, 'json')

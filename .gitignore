@@ -1,17 +1,40 @@
 # === Canonical Block (managed by RepoAutomaton) ===
+
+# --- Dados que representam o uso de IA ---
 .claude/
 .superpowers/
 .gemini/
-.graphify/
-graphify-out/
 CLAUDE.md
 GEMINI.md
+
+# --- Dado financeiro nunca é versionado ---
 *.xlsx
+*.xls
 *.csv
+
+# --- Arquivos temporários ---
 tmp/
 output/
+
+# --- Saída do graphify — derivada, reconstruível a qualquer momento ---
+.graphify/
+graphify-out/
+.graphifyignore
+
+# --- Segredos e configuração local (chaves, tokens — nunca versionar) ---
 .*/
 .env
+
+# --- Cache e artefatos do Python/pytest ---
 .pytest_cache/
 __pycache__/
 *.pyc
+
+# --- Opções de performance (trade-off velocidade x precisão) — ver .env ---
+# Whisper (config/settings.py):
+#   WHISPER_MODEL_SIZE=medium + WHISPER_BEAM_SIZE=5 -> mais preciso, transcrição mais lenta na CPU
+#   WHISPER_MODEL_SIZE=small  + WHISPER_BEAM_SIZE=1 -> mais rápido, leve perda de precisão (ATUAL, em teste)
+# Claude CLI (services/claude_cli_service.py):
+#   Login OAuth (claude auth login)  -> sem custo por token extra, ~3s de overhead de CLI por chamada (ATUAL)
+#   ANTHROPIC_API_KEY + --bare mode  -> ~1,4s de overhead de CLI por chamada, mas cobra por token de API
+#   STREAMING=True                   -> só reduz a espera percebida se o "thinking" do modelo for curto (ver README)

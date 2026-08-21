@@ -173,6 +173,26 @@ context_input/
 
 ---
 
+## ⚡ Performance (velocidade x precisão)
+
+O pipeline tem dois pontos de latência configuráveis, cada um com trade-off entre velocidade e qualidade:
+
+| Config | Rápido (atual) | Preciso | Onde |
+|---|---|---|---|
+| `WHISPER_MODEL_SIZE` | `small` | `medium` | `.env` |
+| `WHISPER_BEAM_SIZE` | `1` | `5` | `.env` |
+| Autenticação Claude CLI | OAuth (`claude auth login`) — ~3s de overhead de CLI por chamada, sem custo extra | `ANTHROPIC_API_KEY` + `--bare` — ~1,4s de overhead de CLI por chamada, cobra por token de API | `services/claude_cli_service.py` |
+
+`config/settings.py` já lê `WHISPER_MODEL_SIZE` e `WHISPER_BEAM_SIZE` do `.env`; o modo `--bare` do Claude CLI não está implementado (exige trocar OAuth por `ANTHROPIC_API_KEY`, uma decisão de custo).
+
+### Streaming da resposta (`STREAMING`)
+
+Com `STREAMING=True` no `.env`, `ClaudeCLIService.run_text_stream` usa `--output-format stream-json --include-partial-messages` e o painel de sugestões vai preenchendo em tempo real em vez de aparecer tudo de uma vez ao final.
+
+**Medido na prática:** o ganho é menor do que o esperado. O modelo gera um bloco de "thinking" oculto antes do texto visível, e esse bloco sozinho já consome a maior parte do tempo total (em teste com haiku, ~7-8s de thinking contra ~1s de texto visível) — então o primeiro pedaço de texto só aparece perto do fim da resposta de qualquer forma. `GeminiCLIService` não tem streaming incremental mapeado; com `STREAMING=True` e provider Gemini, a resposta ainda chega de uma vez (um único "pedaço").
+
+---
+
 ## 🕵️ Dificuldades Encontradas
 
 1. **WASAPI Loopback no Windows** — A captura de áudio do sistema requer o uso de WASAPI Loopback, disponível apenas no Windows. A biblioteca PyAudioWPatch é um fork do PyAudio que adiciona suporte nativo a esse recurso.

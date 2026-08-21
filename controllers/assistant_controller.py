@@ -88,19 +88,35 @@ class AssistantController:
                         # Momento de processar
                         live.update(Panel(Text("⏳ Processing transcription...", style="bold yellow"), border_style="yellow", title="Status"))
                         
+                        transcribe_start = time.time()
                         transcription = self.transcription_service.transcribe(accumulated_audio)
-                        
+                        transcribe_elapsed = time.time() - transcribe_start
+
                         if transcription and transcription.strip():
                             # Imprime a transcrição congelada acima
-                            self.console.print(Panel(transcription, title="🎙️ Transcription", border_style="cyan"))
-                            
+                            self.console.print(Panel(transcription, title=f"🎙️ Transcription ({transcribe_elapsed:.2f}s)", border_style="cyan"))
+
                             live.update(Panel(Text("🧠 Generating AI suggestions...", style="bold magenta"), border_style="magenta", title="Status"))
-                            
+
                             context = self.context_service.load_all_context()
-                            response = self.response_service.generate_response(transcription, context)
-                            
+                            generate_start = time.time()
+
+                            if Settings.STREAMING:
+                                response = ""
+                                try:
+                                    for chunk in self.response_service.generate_response_stream(transcription, context):
+                                        response += chunk
+                                        live.update(Panel(response, title="🤖 AI Suggestions (streaming...)", border_style="green"))
+                                except Exception as e:
+                                    logger.error("Erro ao gerar resposta em streaming: %s", e)
+                                    response = f"Error generating response: {str(e)}"
+                            else:
+                                response = self.response_service.generate_response(transcription, context)
+
+                            generate_elapsed = time.time() - generate_start
+
                             # Imprime as sugestões congeladas acima
-                            self.console.print(Panel(response, title="🤖 AI Suggestions", border_style="green"))
+                            self.console.print(Panel(response, title=f"🤖 AI Suggestions ({generate_elapsed:.2f}s)", border_style="green"))
 
                         # Reseta os contadores e limpa
                         accumulated_audio = []
