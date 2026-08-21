@@ -26,7 +26,8 @@ class Settings:
     SILENCE_TIMEOUT_SECONDS = 1.0
     WHISPER_MODEL_SIZE = os.environ.get("WHISPER_MODEL_SIZE", "small")
     WHISPER_LANGUAGE = os.environ.get("WHISPER_LANGUAGE", "en")
-    WHISPER_COMPUTE_TYPE = "int8"
+    WHISPER_DEVICE = os.environ.get("WHISPER_DEVICE", "cuda")
+    WHISPER_COMPUTE_TYPE = os.environ.get("WHISPER_COMPUTE_TYPE", "float16")
     WHISPER_BEAM_SIZE = int(os.environ.get("WHISPER_BEAM_SIZE", "1"))
     INPUT_DATA_DIR = Path("input_data")
     OUTPUT_DIR = Path("output")

@@ -8,9 +8,15 @@ from utils.audio_helpers import AudioHelpers
 logger = logging.getLogger(__name__)
 
 class TranscriptionService:
-    def __init__(self, model_size: str = Settings.WHISPER_MODEL_SIZE, language: str = Settings.WHISPER_LANGUAGE, compute_type: str = Settings.WHISPER_COMPUTE_TYPE, beam_size: int = Settings.WHISPER_BEAM_SIZE):
-        logger.info("Carregando modelo de transcrição '%s'...", model_size)
-        self.model = WhisperModel(model_size, device="cpu", compute_type=compute_type)
+    def __init__(self, model_size: str = Settings.WHISPER_MODEL_SIZE, language: str = Settings.WHISPER_LANGUAGE, compute_type: str = Settings.WHISPER_COMPUTE_TYPE, beam_size: int = Settings.WHISPER_BEAM_SIZE, device: str = Settings.WHISPER_DEVICE):
+        logger.info("Carregando modelo de transcrição '%s' (device=%s)...", model_size, device)
+        try:
+            self.model = WhisperModel(model_size, device=device, compute_type=compute_type)
+        except Exception as e:
+            # Portabilidade: a GPU configurada pode não existir nesta máquina
+            # (ex: repositório rodando em outro computador sem CUDA).
+            logger.warning("Falha ao carregar Whisper em '%s' (%s); usando CPU/int8.", device, e)
+            self.model = WhisperModel(model_size, device="cpu", compute_type="int8")
         self.language = language
         self.beam_size = beam_size
 
