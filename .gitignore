@@ -32,8 +32,9 @@ __pycache__/
 
 # --- Opções de performance (trade-off velocidade x precisão) — ver .env ---
 # Whisper (config/settings.py):
-#   WHISPER_MODEL_SIZE=medium + WHISPER_BEAM_SIZE=5 -> mais preciso, transcrição mais lenta na CPU
-#   WHISPER_MODEL_SIZE=small  + WHISPER_BEAM_SIZE=1 -> mais rápido, leve perda de precisão (ATUAL, em teste)
+#   WHISPER_MODEL_SIZE=medium + WHISPER_BEAM_SIZE=5 -> mais preciso, transcrição mais lenta
+#   WHISPER_MODEL_SIZE=small  + WHISPER_BEAM_SIZE=1 -> mais rápido, leve perda de precisão (ATUAL)
+#   WHISPER_DEVICE=cuda + WHISPER_COMPUTE_TYPE=float16 -> ~40% mais rápido que CPU (ATUAL, com fallback automático pra CPU se a GPU falhar)
 # Claude CLI (services/claude_cli_service.py):
 #   Login OAuth (claude auth login)  -> sem custo por token extra, ~3s de overhead de CLI por chamada (ATUAL)
 #   ANTHROPIC_API_KEY + --bare mode  -> ~1,4s de overhead de CLI por chamada, mas cobra por token de API
