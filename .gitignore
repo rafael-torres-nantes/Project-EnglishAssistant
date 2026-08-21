@@ -1,0 +1,17 @@
+# === Canonical Block (managed by RepoAutomaton) ===
+.claude/
+.superpowers/
+.gemini/
+.graphify/
+graphify-out/
+CLAUDE.md
+GEMINI.md
+*.xlsx
+*.csv
+tmp/
+output/
+.*/
+.env
+.pytest_cache/
+__pycache__/
+*.pyc
