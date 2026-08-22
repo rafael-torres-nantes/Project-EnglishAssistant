@@ -7,7 +7,7 @@
 
 ### Contexto
 
-`R4` (`risks.md`) apontava latência alta entre transcrição e resposta como risco aberto.
+`R4` ([`risks.md`](risks.md)) apontava latência alta entre transcrição e resposta como risco aberto.
 Para decidir a melhor configuração de provider/modelo de IA, foi rodado um benchmark
 (`scripts/benchmark_ai_response.py`) com um prompt de reunião realista, 3 execuções por
 configuração, contra `ResponseService.generate_response` — o mesmo caminho de código usado
@@ -23,7 +23,7 @@ em produção pelo `AssistantController`.
 
 ### Por que o Sonnet venceu (contra-intuitivo)
 
-A expectativa era que Haiku fosse o mais rápido por ser o modelo menor. O README já
+A expectativa era que Haiku fosse o mais rápido por ser o modelo menor. O [README](../../README.md) já
 documentava (seção "Streaming da resposta") que o Claude CLI gera um bloco de "thinking"
 oculto antes do texto visível, e que esse bloco consome a maior parte do tempo total
 (~7-8s de thinking contra ~1s de texto visível, medido com haiku). O benchmark confirma
