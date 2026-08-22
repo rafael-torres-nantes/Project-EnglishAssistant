@@ -12,3 +12,4 @@
 | F8 | CLI entrypoint | ✅ Concluído | `main.py` |
 | F9 | Testes unitários | ⏳ Em andamento | `tests/` |
 | F10 | Documentação final | ⏳ Em andamento | `README.md`, `docs/` |
+| F11 | Benchmark e otimização de latência de resposta IA | ✅ Concluído | `scripts/benchmark_ai_response.py`, [`docs/planning/decisions.md`](../planning/decisions.md) |

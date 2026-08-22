@@ -183,8 +183,11 @@ O pipeline tem dois pontos de latência configuráveis, cada um com trade-off en
 | `WHISPER_BEAM_SIZE` | `1` | `5` | `.env` |
 | `WHISPER_DEVICE` / `WHISPER_COMPUTE_TYPE` | `cuda` / `float16` — ~40% mais rápido que CPU depois do warm-up (medido nesta máquina, GTX 1650) | `cpu` / `int8` — sem GPU disponível | `.env` |
 | Autenticação Claude CLI | OAuth (`claude auth login`) — ~3s de overhead de CLI por chamada, sem custo extra | `ANTHROPIC_API_KEY` + `--bare` — ~1,4s de overhead de CLI por chamada, cobra por token de API | `services/claude_cli_service.py` |
+| `CLAUDE_MODEL` | `sonnet` — **~5,3s médios**, contra-intuitivamente mais rápido que haiku nesta CLI (ver nota abaixo) | `haiku` — ~13,2s médios | `.env` |
 
 `config/settings.py` já lê todas as variáveis Whisper do `.env`; se `WHISPER_DEVICE=cuda` falhar (ex: rodando numa máquina sem GPU NVIDIA), `TranscriptionService` cai para `cpu`/`int8` automaticamente e loga um aviso. O modo `--bare` do Claude CLI não está implementado (exige trocar OAuth por `ANTHROPIC_API_KEY`, uma decisão de custo).
+
+**Nota sobre `CLAUDE_MODEL`:** benchmark com `scripts/benchmark_ai_response.py` (3 execuções por config, prompt de reunião realista) mostrou o Sonnet 2,5x mais rápido que o Haiku de forma consistente — o oposto do esperado. A causa é o bloco de "thinking" oculto do Claude CLI (ver seção de streaming abaixo): ele domina o tempo total, e nesta CLI o Haiku gerou um thinking mais longo que o Sonnet. Detalhes e dados completos em [`docs/planning/decisions.md`](docs/planning/decisions.md).
 
 ### Streaming da resposta (`STREAMING`)
 
