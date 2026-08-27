@@ -4,6 +4,7 @@ from typing import Iterator
 from services.claude_cli_service import ClaudeCLIService
 from services.gemini_cli_service import GeminiCLIService
 from config.settings import Settings
+from prompt_template.conversational_prompt import CONVERSATIONAL_SYSTEM_PROMPT
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +20,7 @@ class ResponseService:
 
     def _build_system_prompt(self, context: str) -> str:
         try:
-            return Settings.SYSTEM_PROMPT_TEMPLATE.format(meeting_context=context)
+            return CONVERSATIONAL_SYSTEM_PROMPT.format(meeting_context=context)
         except Exception as e:
             logger.error("Failed to build system prompt: %s", e)
             return f"Context:\n{context}\n\nPlease help the user with their English responses."

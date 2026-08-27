@@ -69,7 +69,8 @@ class AssistantController:
         status_text = Text("🎧 Listening to system audio... (Press 'p' to force reply)", style="dim italic")
         status_panel = Panel(status_text, border_style="blue", title="Status")
 
-        with Live(status_panel, console=self.console, refresh_per_second=4, transient=False) as live:
+        with Live(status_panel, console=self.console, auto_refresh=False, transient=True) as live:
+            live.refresh()
             while self.is_running:
                 force_process = False
                 if msvcrt and msvcrt.kbhit():
@@ -92,7 +93,7 @@ class AssistantController:
                     if speech_detected:
                         if not is_speaking:
                             # Mudou de silencio para fala
-                            live.update(Panel(Text("🔊 Speech detected! Recording...", style="bold green"), border_style="green", title="Status"))
+                            live.update(Panel(Text("🔊 Speech detected! Recording...", style="bold green"), border_style="green", title="Status"), refresh=True)
                             last_transcribe_time = time.time()
                         is_speaking = True
                         silence_frames = 0
@@ -107,7 +108,7 @@ class AssistantController:
                         try:
                             partial_text = self.transcription_service.transcribe(accumulated_audio)
                             if partial_text:
-                                live.update(Panel(Text(f"🎙️ {partial_text} ...", style="bold cyan"), border_style="cyan", title="Transcribing... (Press 'p' to force)"))
+                                live.update(Panel(Text(f"🎙️ {partial_text} ...", style="bold cyan"), border_style="cyan", title="Transcribing... (Press 'p' to force)"), refresh=True)
                         except Exception:
                             pass
                         last_transcribe_time = time.time()
@@ -115,19 +116,22 @@ class AssistantController:
                     if silence_frames > max_silence_frames or force_process:
                         # Momento de processar final
                         if force_process:
+                            live.stop()
                             self.console.print(Panel(Text("🛑 Force processing triggered by user ('p' pressed)", style="bold red"), border_style="red"))
+                            live.start()
                         
-                        live.update(Panel(Text("⏳ Finalizing transcription...", style="bold yellow"), border_style="yellow", title="Status"))
+                        live.update(Panel(Text("⏳ Finalizing transcription...", style="bold yellow"), border_style="yellow", title="Status"), refresh=True)
                         
                         transcribe_start = time.time()
                         transcription = self.transcription_service.transcribe(accumulated_audio)
                         transcribe_elapsed = time.time() - transcribe_start
 
                         if transcription and transcription.strip():
-                            # Imprime a transcrição congelada acima
+                            # Pausa o Live panel (apaga o status de transcrevendo) para printar permanente
+                            live.stop()
+                            
+                            # Imprime a transcrição permanentemente
                             self.console.print(Panel(transcription, title=f"🎙️ Transcription ({transcribe_elapsed:.2f}s)", border_style="cyan"))
-
-                            live.update(Panel(Text("🧠 Generating AI suggestions...", style="bold magenta"), border_style="magenta", title="Status"))
 
                             context = self.context_service.load_all_context()
                             generate_start = time.time()
@@ -135,22 +139,29 @@ class AssistantController:
                             if Settings.STREAMING:
                                 response = ""
                                 try:
-                                    for chunk in self.response_service.generate_response_stream(transcription, context):
-                                        response += chunk
-                                        live.update(Panel(response, title="🤖 AI Suggestions (streaming...)", border_style="green"))
+                                    # Usa um Live panel proprio e persistente (transient=False) para o streaming
+                                    with Live(Panel("🧠 Generating AI suggestions...", title="🤖 AI Suggestions (streaming...)", border_style="green"), console=self.console, transient=False) as stream_live:
+                                        for chunk in self.response_service.generate_response_stream(transcription, context):
+                                            response += chunk
+                                            stream_live.update(Panel(response, title="🤖 AI Suggestions (streaming...)", border_style="green"), refresh=True)
+                                        
+                                        generate_elapsed = time.time() - generate_start
+                                        # Atualiza o painel final (ele ficara na tela pois transient=False)
+                                        stream_live.update(Panel(response, title=f"🤖 AI Suggestions ({generate_elapsed:.2f}s)", border_style="green"), refresh=True)
                                 except Exception as e:
                                     logger.error("Erro ao gerar resposta em streaming: %s", e)
                                     response = f"Error generating response: {str(e)}"
+                                    self.console.print(Panel(response, title="🤖 Error", border_style="red"))
                             else:
-                                response = self.response_service.generate_response(transcription, context)
-
-                            generate_elapsed = time.time() - generate_start
-
-                            # Limpa o Live panel de streaming para não duplicar na tela antes do print final
-                            live.update(Panel(Text("⏳ Cleaning up...", style="dim"), border_style="white", title="Status"))
+                                # Usa um Live panel transiente apenas para mostrar o status enquanto gera
+                                with Live(Panel(Text("🧠 Generating AI suggestions...", style="bold magenta"), border_style="magenta", title="Status"), console=self.console, transient=True):
+                                    response = self.response_service.generate_response(transcription, context)
+                                
+                                generate_elapsed = time.time() - generate_start
+                                self.console.print(Panel(response, title=f"🤖 AI Suggestions ({generate_elapsed:.2f}s)", border_style="green"))
                             
-                            # Imprime as sugestões congeladas acima
-                            self.console.print(Panel(response, title=f"🤖 AI Suggestions ({generate_elapsed:.2f}s)", border_style="green"))
+                            # Retoma o Live panel principal para o status idle
+                            live.start()
 
                         # Reseta os contadores e limpa
                         accumulated_audio = []
@@ -162,13 +173,13 @@ class AssistantController:
                             self.audio_service.audio_queue.queue.clear()
                             
                         if force_process:
-                            live.update(Panel(Text("⏳ Paused to avoid immediate feedback...", style="dim yellow"), border_style="yellow", title="Status"))
+                            live.update(Panel(Text("⏳ Paused to avoid immediate feedback...", style="dim yellow"), border_style="yellow", title="Status"), refresh=True)
                             time.sleep(1.5)
                             with self.audio_service.audio_queue.mutex:
                                 self.audio_service.audio_queue.queue.clear()
 
                         # Volta pro painel de listening
-                        live.update(Panel(Text("🎧 Listening to system audio... (Press 'p' to force reply)", style="dim italic"), border_style="blue", title="Status"))
+                        live.update(Panel(Text("🎧 Listening to system audio... (Press 'p' to force reply)", style="dim italic"), border_style="blue", title="Status"), refresh=True)
 
                 time.sleep(0.01)
 
