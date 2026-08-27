@@ -63,3 +63,35 @@ O usuário solicitou melhorias para a interrupção da fala da pessoa na reuniã
 - **Limpeza de Buffer**: Adicionado flush (`clear()`) da fila de áudio (`audio_queue`) após a geração da resposta. Evita que a IA processe falas residuais captadas enquanto ela demorava para pensar.
 - **Feedback Visual (Rich)**: Corrigido bug de quebra de tela ao intercalar `console.print()` com painéis transitórios (`Live`). Agora o `Live` display encolhe temporariamente (`⏳ Cleaning up...`) antes de efetuar prints absolutos, prevenindo duplicação da UI no stdout do terminal.
 - **Engenharia de Prompt**: Adicionada estrutura de 6 bullet-points em ordem de complexidade, e tradução PT-BR (parênteses) das explicações conceituais.
+
+## D3 — Fix de layout do Rich Live (streaming) e extração do prompt de sistema
+
+**Data**: 2026-08-27
+**Status**: ✅ Aplicado (`controllers/assistant_controller.py`, `prompt_template/conversational_prompt.py`, `services/response_service.py`)
+
+### Contexto
+
+A correção de UI descrita em D2 (painel `⏳ Cleaning up...` antes do print final) não foi
+suficiente: respostas de streaming longas que rolavam o terminal ainda desalinhavam o cursor
+do `rich.Live`, duplicando o painel de sugestões na tela. O prompt de sistema conversacional
+(`SYSTEM_PROMPT_TEMPLATE`), por sua vez, tinha crescido a ponto de poluir `config/settings.py`.
+
+### Decisão
+
+- Streaming ganhou um `Live` próprio e persistente (`transient=False`, `auto_refresh=False`
+  com `refresh=True` manual em cada update) só para o bloco de sugestões, em vez de reaproveitar
+  o `Live` do status principal — corrige o rastreio de cursor quando o terminal rola.
+- Transcrição forçada (`force_process`) e os prints permanentes (transcrição, sugestão final,
+  erro) agora fazem `live.stop()` / `live.start()` em volta do `console.print()`, no lugar do
+  hack de painel `⏳ Cleaning up...` — elimina a duplicação de painel na tela.
+- `SYSTEM_PROMPT_TEMPLATE` saiu de `config/settings.py` e virou `CONVERSATIONAL_SYSTEM_PROMPT`
+  em `prompt_template/conversational_prompt.py`; `ResponseService._build_system_prompt` passou
+  a importar de lá. `config/settings.py` volta a ser só configuração.
+- O prompt ganhou uma regra de correção fonética: mapear termos técnicos transcritos errado
+  (ex.: "OTS LOW DE BALANCE") para o conceito real (ex.: "What is load balancer?") antes de
+  responder — o Whisper erra termos técnicos com frequência em reuniões de engenharia.
+
+### Nota sobre D2
+
+A entrada D2 descrevia a correção de UI de forma prospectiva; o comportamento correto só foi
+implementado nesta decisão (D3). Para o estado atual do `Live`, use D3 como referência.
