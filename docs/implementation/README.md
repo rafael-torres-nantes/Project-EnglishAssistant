@@ -13,7 +13,7 @@
 | F9 | Testes unitários | ⏳ Em andamento | `tests/` |
 | F10 | Documentação final | ⏳ Em andamento | `README.md`, `docs/` |
 | F11 | Benchmark e otimização de latência de resposta IA | ✅ Concluído | `scripts/benchmark_ai_response.py`, [`docs/planning/decisions.md`](../planning/decisions.md) |
-
-| F12 | Interrup��o manual (tecla 'p') e UI fixa | ? Conclu�do | \controllers/assistant_controller.py\ |
-| F13 | Otimiza��o de prompt e tradu��o em tempo real | ? Conclu�do | \config/settings.py\ |
+| F12 | Interrupção manual (tecla 'p') e modo Tutor (rascunho) | ✅ Concluído | `controllers/assistant_controller.py`, `controllers/tutor_controller.py` |
+| F13 | Prompt de reuniões com 6 bullet points progressivos + tradução PT-BR | ✅ Concluído | `config/settings.py` (prompt extraído em F14) |
+| F14 | Extração do system prompt para módulo dedicado + fix de layout do `Live` (Rich) | ✅ Concluído | `prompt_template/conversational_prompt.py`, `controllers/assistant_controller.py`, [`docs/planning/decisions.md`](../planning/decisions.md) |
 
