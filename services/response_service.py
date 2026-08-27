@@ -54,6 +54,25 @@ class ResponseService:
         prompt = self._build_prompt(transcribed_text, context)
         yield from self.ai_service.run_text_stream(prompt, system_prompt)
 
+    def _build_tutor_system_prompt(self, context: str) -> str:
+        return (
+            "You are an expert English Tutor. The user is practicing English. "
+            "Correct their mistakes gently, explain concepts clearly, and keep the conversation engaging. "
+            f"Here is some context about the user's current studies or focus:\n\n{context}"
+        )
+
+    def generate_tutor_response(self, user_text: str, context: str) -> str:
+        try:
+            system_prompt = self._build_tutor_system_prompt(context)
+            return self.ai_service.run_text(user_text, system_prompt)
+        except Exception as e:
+            logger.error("Error generating tutor response: %s", e)
+            return f"Error generating response: {str(e)}"
+
+    def generate_tutor_response_stream(self, user_text: str, context: str) -> Iterator[str]:
+        system_prompt = self._build_tutor_system_prompt(context)
+        yield from self.ai_service.run_text_stream(user_text, system_prompt)
+
     def stop(self) -> None:
         logger.info("Response service stopped.")
 

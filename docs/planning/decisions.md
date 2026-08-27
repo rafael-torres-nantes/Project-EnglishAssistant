@@ -48,3 +48,18 @@ python scripts/benchmark_ai_response.py
 
 Ajustar `runs_per_config` ou a lista de configs em `if __name__ == "__main__":` para testar
 outras combinações (ex: outros modelos Gemini, ou incluir a etapa de transcrição Whisper).
+
+## D2 — Migração para Gemini e Otimizações de Latência/UX
+
+**Data**: 2026-08-27
+**Status**: ✅ Aplicado (`.env`, `config/settings.py`, `controllers/assistant_controller.py`)
+
+### Contexto
+O usuário solicitou melhorias para a interrupção da fala da pessoa na reunião, forçando a IA a gerar uma resposta parcial no exato milissegundo de corte. Também houve necessidade de aumentar a velocidade de resposta trocando a stack de provider e limitando o tamanho da resposta estruturada, que agora exibe 6 bullet-points progressivos e traduzidos para Português em parênteses.
+
+### Decisão
+- `GEMINI_MODEL=gemini-3.7-flash-low` no `.env`: trocado o modelo para o mais rápido disponível via Antigravity, com threshold baixo de thinking.
+- **Teclado não-bloqueante**: Utilizado `msvcrt.kbhit()` para Windows, escutando a tecla 'p' em background sem atrasar o loop de áudio WASAPI.
+- **Limpeza de Buffer**: Adicionado flush (`clear()`) da fila de áudio (`audio_queue`) após a geração da resposta. Evita que a IA processe falas residuais captadas enquanto ela demorava para pensar.
+- **Feedback Visual (Rich)**: Corrigido bug de quebra de tela ao intercalar `console.print()` com painéis transitórios (`Live`). Agora o `Live` display encolhe temporariamente (`⏳ Cleaning up...`) antes de efetuar prints absolutos, prevenindo duplicação da UI no stdout do terminal.
+- **Engenharia de Prompt**: Adicionada estrutura de 6 bullet-points em ordem de complexidade, e tradução PT-BR (parênteses) das explicações conceituais.

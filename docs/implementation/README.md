@@ -13,3 +13,7 @@
 | F9 | Testes unitÃ¡rios | â³ Em andamento | `tests/` |
 | F10 | DocumentaÃ§Ã£o final | â³ Em andamento | `README.md`, `docs/` |
 | F11 | Benchmark e otimizaÃ§Ã£o de latÃªncia de resposta IA | âœ… ConcluÃ­do | `scripts/benchmark_ai_response.py`, [`docs/planning/decisions.md`](../planning/decisions.md) |
+
+| F12 | Interrupção manual (tecla 'p') e UI fixa | ? Concluído | \controllers/assistant_controller.py\ |
+| F13 | Otimização de prompt e tradução em tempo real | ? Concluído | \config/settings.py\ |
+

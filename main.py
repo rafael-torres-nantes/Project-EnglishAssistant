@@ -1,6 +1,22 @@
 import argparse
 import logging
 import time
+import os
+import sys
+
+# Adiciona diretórios do NVIDIA cuBLAS e cuDNN para o faster-whisper no Windows
+if os.name == 'nt':
+    for path in sys.path:
+        if 'site-packages' in path:
+            # Pastas instaladas via `pip install nvidia-cublas-cu12 nvidia-cudnn-cu12`
+            for pkg in ['cublas', 'cudnn', 'cuda_nvrtc']:
+                dll_dir = os.path.join(path, 'nvidia', pkg, 'bin')
+                if os.path.exists(dll_dir):
+                    os.environ["PATH"] = dll_dir + os.pathsep + os.environ.get("PATH", "")
+                    try:
+                        os.add_dll_directory(dll_dir)
+                    except AttributeError:
+                        pass
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -14,6 +30,7 @@ except ImportError:
 
 from config.settings import Settings
 from controllers.assistant_controller import AssistantController
+from controllers.tutor_controller import TutorController
 from services.context_service import ContextService
 from services.audio_capture_service import AudioCaptureService
 from services.response_service import ResponseService
@@ -53,6 +70,10 @@ def main():
     # test-ai command
     test_ai_parser = subparsers.add_parser("test-ai", help="Send a test prompt to the AI provider")
     test_ai_parser.add_argument("--provider", default=Settings.DEFAULT_AI_PROVIDER, help="claude or gemini")
+
+    # tutor command
+    tutor_parser = subparsers.add_parser("tutor", help="Start an interactive English Tutor session")
+    tutor_parser.add_argument("--provider", default=Settings.DEFAULT_AI_PROVIDER, help="claude or gemini")
 
     args = parser.parse_args()
 
@@ -106,6 +127,11 @@ def main():
         response = response_service.generate_response("Hello, this is a test prompt.", "")
         print("Response:")
         print(response)
+
+    elif args.command == "tutor":
+        provider = getattr(args, "provider", Settings.DEFAULT_AI_PROVIDER)
+        controller = TutorController(provider=provider)
+        controller.start()
 
 if __name__ == "__main__":
     main()

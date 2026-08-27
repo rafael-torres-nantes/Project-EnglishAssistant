@@ -1,5 +1,11 @@
 import logging
 import time
+import sys
+try:
+    import msvcrt
+except ImportError:
+    msvcrt = None
+
 from rich.console import Console
 from rich.panel import Panel
 from rich.live import Live
@@ -57,36 +63,61 @@ class AssistantController:
         max_silence_frames = max(1, int(Settings.SILENCE_TIMEOUT_SECONDS / Settings.AUDIO_CHUNK_DURATION_SECONDS))
         
         silence_frames = 0
+        last_transcribe_time = 0
 
         # UI dinâmica
-        status_text = Text("🎧 Listening to system audio...", style="dim italic")
+        status_text = Text("🎧 Listening to system audio... (Press 'p' to force reply)", style="dim italic")
         status_panel = Panel(status_text, border_style="blue", title="Status")
 
         with Live(status_panel, console=self.console, refresh_per_second=4, transient=False) as live:
             while self.is_running:
+                force_process = False
+                if msvcrt and msvcrt.kbhit():
+                    try:
+                        key = msvcrt.getch().decode('utf-8', 'ignore').lower()
+                        if key == 'p':
+                            force_process = True
+                    except Exception:
+                        pass
+
                 payload = self.audio_service.get_audio_chunk()
-                if payload is None:
+                if payload is None and not force_process:
                     time.sleep(0.1)
                     continue
 
-                chunk, sample_rate, channels = payload
-                speech_detected = self.transcription_service.is_speech(chunk, sample_rate, channels)
+                if payload is not None:
+                    chunk, sample_rate, channels = payload
+                    speech_detected = self.transcription_service.is_speech(chunk, sample_rate, channels)
 
-                if speech_detected:
-                    if not is_speaking:
-                        # Mudou de silencio para fala
-                        live.update(Panel(Text("🔊 Speech detected! Recording...", style="bold green"), border_style="green", title="Status"))
-                    is_speaking = True
-                    silence_frames = 0
-                    accumulated_audio.append(payload)
+                    if speech_detected:
+                        if not is_speaking:
+                            # Mudou de silencio para fala
+                            live.update(Panel(Text("🔊 Speech detected! Recording...", style="bold green"), border_style="green", title="Status"))
+                            last_transcribe_time = time.time()
+                        is_speaking = True
+                        silence_frames = 0
+                        accumulated_audio.append(payload)
+                    elif is_speaking:
+                        silence_frames += 1
+                        accumulated_audio.append(payload)
 
-                elif is_speaking:
-                    silence_frames += 1
-                    accumulated_audio.append(payload)
+                if is_speaking:
+                    # Streaming transcription update every 1 second
+                    if time.time() - last_transcribe_time >= 1.0:
+                        try:
+                            partial_text = self.transcription_service.transcribe(accumulated_audio)
+                            if partial_text:
+                                live.update(Panel(Text(f"🎙️ {partial_text} ...", style="bold cyan"), border_style="cyan", title="Transcribing... (Press 'p' to force)"))
+                        except Exception:
+                            pass
+                        last_transcribe_time = time.time()
 
-                    if silence_frames > max_silence_frames:
-                        # Momento de processar
-                        live.update(Panel(Text("⏳ Processing transcription...", style="bold yellow"), border_style="yellow", title="Status"))
+                    if silence_frames > max_silence_frames or force_process:
+                        # Momento de processar final
+                        if force_process:
+                            self.console.print(Panel(Text("🛑 Force processing triggered by user ('p' pressed)", style="bold red"), border_style="red"))
+                        
+                        live.update(Panel(Text("⏳ Finalizing transcription...", style="bold yellow"), border_style="yellow", title="Status"))
                         
                         transcribe_start = time.time()
                         transcription = self.transcription_service.transcribe(accumulated_audio)
@@ -115,6 +146,9 @@ class AssistantController:
 
                             generate_elapsed = time.time() - generate_start
 
+                            # Limpa o Live panel de streaming para não duplicar na tela antes do print final
+                            live.update(Panel(Text("⏳ Cleaning up...", style="dim"), border_style="white", title="Status"))
+                            
                             # Imprime as sugestões congeladas acima
                             self.console.print(Panel(response, title=f"🤖 AI Suggestions ({generate_elapsed:.2f}s)", border_style="green"))
 
@@ -122,8 +156,19 @@ class AssistantController:
                         accumulated_audio = []
                         is_speaking = False
                         silence_frames = 0
+                        
+                        # Limpa o áudio que continuou sendo capturado em background
+                        with self.audio_service.audio_queue.mutex:
+                            self.audio_service.audio_queue.queue.clear()
+                            
+                        if force_process:
+                            live.update(Panel(Text("⏳ Paused to avoid immediate feedback...", style="dim yellow"), border_style="yellow", title="Status"))
+                            time.sleep(1.5)
+                            with self.audio_service.audio_queue.mutex:
+                                self.audio_service.audio_queue.queue.clear()
+
                         # Volta pro painel de listening
-                        live.update(Panel(Text("🎧 Listening to system audio...", style="dim italic"), border_style="blue", title="Status"))
+                        live.update(Panel(Text("🎧 Listening to system audio... (Press 'p' to force reply)", style="dim italic"), border_style="blue", title="Status"))
 
                 time.sleep(0.01)
 
