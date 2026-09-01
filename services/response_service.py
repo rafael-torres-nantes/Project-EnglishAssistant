@@ -9,7 +9,21 @@ from prompt_template.conversational_prompt import CONVERSATIONAL_SYSTEM_PROMPT
 logger = logging.getLogger(__name__)
 
 class ResponseService:
+    """Gera sugestões de resposta e respostas de tutor via Claude ou Gemini CLI."""
+
     def __init__(self, provider: str):
+        """
+        Função de inicialização do serviço de geração de respostas.
+
+        Args:
+            provider (str): Provedor de IA a usar ("claude" ou "gemini").
+
+        Returns:
+            None
+
+        Raises:
+            ValueError: Se o provider não for "claude" nem "gemini".
+        """
         self.provider = provider.lower()
         if self.provider == 'claude':
             self.ai_service = ClaudeCLIService()
@@ -33,6 +47,16 @@ class ResponseService:
         )
 
     def generate_response(self, transcribed_text: str, context: str) -> str:
+        """
+        Gera uma sugestão de resposta em inglês para a transcrição da reunião.
+
+        Args:
+            transcribed_text (str): Texto transcrito da fala capturada na reunião.
+            context (str): Conteúdo de contexto carregado da pasta de contexto.
+
+        Returns:
+            str: Sugestão de resposta gerada pela IA, ou mensagem de erro se falhar.
+        """
         try:
             system_prompt = self._build_system_prompt(context)
             prompt = self._build_prompt(transcribed_text, context)
@@ -63,6 +87,16 @@ class ResponseService:
         )
 
     def generate_tutor_response(self, user_text: str, context: str) -> str:
+        """
+        Gera a resposta do tutor de inglês para a fala do usuário.
+
+        Args:
+            user_text (str): Texto digitado ou falado pelo usuário.
+            context (str): Conteúdo de contexto carregado da pasta de contexto.
+
+        Returns:
+            str: Resposta do tutor gerada pela IA, ou mensagem de erro se falhar.
+        """
         try:
             system_prompt = self._build_tutor_system_prompt(context)
             return self.ai_service.run_text(user_text, system_prompt)
@@ -71,10 +105,26 @@ class ResponseService:
             return f"Error generating response: {str(e)}"
 
     def generate_tutor_response_stream(self, user_text: str, context: str) -> Iterator[str]:
+        """
+        Gera a resposta do tutor de inglês em streaming.
+
+        Args:
+            user_text (str): Texto digitado ou falado pelo usuário.
+            context (str): Conteúdo de contexto carregado da pasta de contexto.
+
+        Returns:
+            Iterator[str]: Pedaços de texto da resposta assim que chegam.
+        """
         system_prompt = self._build_tutor_system_prompt(context)
         yield from self.ai_service.run_text_stream(user_text, system_prompt)
 
     def stop(self) -> None:
+        """
+        Finaliza o serviço de geração de respostas.
+
+        Returns:
+            None
+        """
         logger.info("Response service stopped.")
 
 if __name__ == "__main__":

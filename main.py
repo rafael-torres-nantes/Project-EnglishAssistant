@@ -1,22 +1,10 @@
 import argparse
 import logging
 import time
-import os
-import sys
 
-# Adiciona diretórios do NVIDIA cuBLAS e cuDNN para o faster-whisper no Windows
-if os.name == 'nt':
-    for path in sys.path:
-        if 'site-packages' in path:
-            # Pastas instaladas via `pip install nvidia-cublas-cu12 nvidia-cudnn-cu12`
-            for pkg in ['cublas', 'cudnn', 'cuda_nvrtc']:
-                dll_dir = os.path.join(path, 'nvidia', pkg, 'bin')
-                if os.path.exists(dll_dir):
-                    os.environ["PATH"] = dll_dir + os.pathsep + os.environ.get("PATH", "")
-                    try:
-                        os.add_dll_directory(dll_dir)
-                    except AttributeError:
-                        pass
+from config.settings import Settings
+
+Settings.setup_cuda_dll_path()
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -28,12 +16,12 @@ try:
 except ImportError:
     def load_dotenv(): pass
 
-from config.settings import Settings
 from controllers.assistant_controller import AssistantController
 from controllers.tutor_controller import TutorController
 from services.context_service import ContextService
 from services.audio_capture_service import AudioCaptureService
 from services.response_service import ResponseService
+from utils.audio_helpers import AudioHelpers
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +31,12 @@ _BANNER = """╔═════════════════════�
 ╚══════════════════════════════════════════════════╝"""
 
 def main():
+    """
+    Ponto de entrada da CLI: parseia os argumentos e despacha para o comando escolhido.
+
+    Returns:
+        None
+    """
     Settings.force_utf8_console()
     load_dotenv()
 
@@ -106,18 +100,24 @@ def main():
         print("Testing audio capture for 5 seconds...")
         audio_service = AudioCaptureService()
         audio_service.start()
-        time.sleep(5)
         chunks = []
-        for _ in range(50):
-            chunk = audio_service.get_audio_chunk()
-            if chunk:
-                chunks.append(chunk)
-            time.sleep(0.1)
+        max_rms = 0.0
+        end_time = time.time() + 5
+        while time.time() < end_time:
+            payload = audio_service.get_audio_chunk()
+            if payload is None:
+                continue
+            data, sample_rate, channels = payload
+            chunks.append(payload)
+            audio_array = AudioHelpers.pcm_to_float32(data, sample_rate, channels)
+            max_rms = max(max_rms, AudioHelpers.calculate_rms(audio_array))
         audio_service.stop()
-        if chunks:
-            print(f"Audio detected successfully. Captured {len(chunks)} chunks.")
-        else:
+        if not chunks:
             print("No audio detected. Check your audio device.")
+        elif max_rms > Settings.SPEECH_RMS_THRESHOLD:
+            print(f"Audio detected successfully. Captured {len(chunks)} chunks, peak RMS={max_rms:.4f}.")
+        else:
+            print(f"Chunks captured ({len(chunks)}), but signal is silent (peak RMS={max_rms:.6f}). Check system volume/output device.")
 
     elif args.command == "test-ai":
         print(_BANNER)

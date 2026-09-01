@@ -33,6 +33,15 @@ class AIResponseBenchmark:
     )
 
     def __init__(self, runs_per_config: int = 3) -> None:
+        """
+        Função de inicialização do benchmark.
+
+        Args:
+            runs_per_config (int): Número de chamadas repetidas por configuração testada.
+
+        Returns:
+            None
+        """
         self.runs_per_config = runs_per_config
 
     def run_config(self, name: str, env_overrides: Dict[str, str]) -> Dict:

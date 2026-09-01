@@ -12,16 +12,38 @@ from config.settings import Settings
 logger = logging.getLogger(__name__)
 
 class ClaudeCLIService:
+    """Executa o Claude Code CLI localmente, headless, sem chave de API."""
+
     def __init__(self, model: str = Settings.DEFAULT_CLAUDE_MODEL, timeout: int = Settings.DEFAULT_TIMEOUT, budget_usd: float = Settings.DEFAULT_BUDGET_USD):
+        """
+        Função de inicialização do serviço de CLI do Claude.
+
+        Args:
+            model (str): Modelo Claude a usar (ex: "haiku", "sonnet").
+            timeout (int): Tempo máximo em segundos para cada chamada da CLI.
+            budget_usd (float): Orçamento máximo em dólares por chamada (--max-budget-usd).
+
+        Returns:
+            None
+        """
         self.model = model
         self.timeout = timeout
         self.budget_usd = budget_usd
         self.executable = self.resolve_executable()
 
     def resolve_executable(self) -> str:
-        # Prefer the real claude.exe (set by the Claude Code install itself) over the
-        # npm .cmd shim: shutil.which("claude") resolves to claude.CMD on Windows, which
-        # Windows routes through cmd.exe, adding a shell-parsing hop we don't need.
+        """
+        Localiza o executável real do Claude Code CLI no sistema.
+
+        Prefere claude.exe (definido pelo próprio instalador do Claude Code) em vez
+        do shim .cmd do npm, que no Windows passa por cmd.exe desnecessariamente.
+
+        Returns:
+            str: Caminho absoluto do executável.
+
+        Raises:
+            RuntimeError: Se o executável não for encontrado no PATH.
+        """
         exe = os.environ.get("CLAUDE_CODE_EXECPATH") or shutil.which("claude")
         if not exe or not os.path.isfile(exe):
             raise RuntimeError("Claude CLI executable not found in PATH. Run 'claude auth login' first.")
@@ -49,9 +71,23 @@ class ClaudeCLIService:
         ]
 
     def run_text(self, prompt: str, system_prompt: str) -> str:
-        # The prompt itself is sent via stdin for the same reason: it can contain
-        # newlines (e.g. multi-line meeting transcriptions) that would otherwise
-        # be truncated by cmd.exe if passed as a CLI argument.
+        """
+        Executa o Claude CLI de forma síncrona e retorna a resposta completa em texto.
+
+        O prompt é enviado via stdin (não como argumento de CLI) porque pode conter
+        quebras de linha, que o cmd.exe truncaria.
+
+        Args:
+            prompt (str): Texto de entrada do usuário.
+            system_prompt (str): Instrução de sistema.
+
+        Returns:
+            str: Resposta gerada pelo modelo, sem espaços nas bordas.
+
+        Raises:
+            subprocess.TimeoutExpired: Se a CLI exceder o tempo limite configurado.
+            subprocess.CalledProcessError: Se a CLI retornar código de erro.
+        """
         try:
             with self._system_prompt_file(system_prompt) as sp_file:
                 cmd = self._build_command(sp_file, 'text')
@@ -116,6 +152,21 @@ class ClaudeCLIService:
                 raise
 
     def run_json(self, prompt: str, system_prompt: str) -> dict:
+        """
+        Executa o Claude CLI e retorna a resposta decodificada como JSON.
+
+        Args:
+            prompt (str): Texto de entrada do usuário.
+            system_prompt (str): Instrução de sistema.
+
+        Returns:
+            dict: Resposta decodificada do JSON retornado pela CLI.
+
+        Raises:
+            subprocess.TimeoutExpired: Se a CLI exceder o tempo limite configurado.
+            subprocess.CalledProcessError: Se a CLI retornar código de erro.
+            json.JSONDecodeError: Se a saída não for um JSON válido.
+        """
         try:
             with self._system_prompt_file(system_prompt) as sp_file:
                 cmd = self._build_command(sp_file, 'json')

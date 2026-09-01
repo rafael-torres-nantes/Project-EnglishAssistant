@@ -9,12 +9,33 @@ from config.settings import Settings
 logger = logging.getLogger(__name__)
 
 class GeminiCLIService:
+    """Executa o Gemini CLI (Antigravity/agy.exe) localmente, headless."""
+
     def __init__(self, model: str = Settings.DEFAULT_GEMINI_MODEL, timeout: int = Settings.DEFAULT_TIMEOUT):
+        """
+        Função de inicialização do serviço de CLI do Gemini.
+
+        Args:
+            model (str): Modelo Gemini a usar (ex: "gemini-3.5-flash-high").
+            timeout (int): Tempo máximo em segundos para cada chamada da CLI.
+
+        Returns:
+            None
+        """
         self.model = model
         self.timeout = timeout
         self.executable = self.resolve_executable()
 
     def resolve_executable(self) -> str:
+        """
+        Localiza o executável do Gemini CLI (agy.exe) instalado pelo Antigravity.
+
+        Returns:
+            str: Caminho absoluto do executável.
+
+        Raises:
+            RuntimeError: Se o executável não existir no caminho esperado.
+        """
         exe = Path.home() / 'AppData' / 'Local' / 'agy' / 'bin' / 'agy.exe'
         if not exe.exists():
             raise RuntimeError(f"Gemini CLI executable not found at {exe}. Install Antigravity first.")
@@ -29,6 +50,20 @@ class GeminiCLIService:
         ]
 
     def run_text(self, prompt: str, system_prompt: str) -> str:
+        """
+        Executa o Gemini CLI de forma síncrona e retorna a resposta completa em texto.
+
+        Args:
+            prompt (str): Texto de entrada do usuário.
+            system_prompt (str): Instrução de sistema.
+
+        Returns:
+            str: Resposta gerada pelo modelo, sem espaços nas bordas.
+
+        Raises:
+            subprocess.TimeoutExpired: Se a CLI exceder o tempo limite configurado.
+            subprocess.CalledProcessError: Se a CLI retornar código de erro.
+        """
         cmd = self._build_command(prompt, system_prompt, 'text')
         try:
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=self.timeout, encoding='utf-8')
@@ -58,6 +93,21 @@ class GeminiCLIService:
         yield self.run_text(prompt, system_prompt)
 
     def run_json(self, prompt: str, system_prompt: str) -> dict:
+        """
+        Executa o Gemini CLI e retorna a resposta decodificada como JSON.
+
+        Args:
+            prompt (str): Texto de entrada do usuário.
+            system_prompt (str): Instrução de sistema.
+
+        Returns:
+            dict: Resposta decodificada do JSON retornado pela CLI.
+
+        Raises:
+            subprocess.TimeoutExpired: Se a CLI exceder o tempo limite configurado.
+            subprocess.CalledProcessError: Se a CLI retornar código de erro.
+            json.JSONDecodeError: Se a saída não for um JSON válido.
+        """
         cmd = self._build_command(prompt, system_prompt, 'json')
         try:
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=self.timeout, encoding='utf-8')
