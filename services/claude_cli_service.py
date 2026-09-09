@@ -151,38 +151,6 @@ class ClaudeCLIService:
                 logger.error("Claude CLI timed out after %d seconds.", self.timeout)
                 raise
 
-    def run_json(self, prompt: str, system_prompt: str) -> dict:
-        """
-        Executa o Claude CLI e retorna a resposta decodificada como JSON.
-
-        Args:
-            prompt (str): Texto de entrada do usuário.
-            system_prompt (str): Instrução de sistema.
-
-        Returns:
-            dict: Resposta decodificada do JSON retornado pela CLI.
-
-        Raises:
-            subprocess.TimeoutExpired: Se a CLI exceder o tempo limite configurado.
-            subprocess.CalledProcessError: Se a CLI retornar código de erro.
-            json.JSONDecodeError: Se a saída não for um JSON válido.
-        """
-        try:
-            with self._system_prompt_file(system_prompt) as sp_file:
-                cmd = self._build_command(sp_file, 'json')
-                result = subprocess.run(cmd, input=prompt, capture_output=True, text=True, timeout=self.timeout, encoding='utf-8')
-            result.check_returncode()
-            return json.loads(result.stdout)
-        except subprocess.TimeoutExpired:
-            logger.error("Claude CLI timed out after %d seconds.", self.timeout)
-            raise
-        except subprocess.CalledProcessError as e:
-            logger.error("Claude CLI failed: %s", e.stderr)
-            raise
-        except json.JSONDecodeError as e:
-            logger.error("Failed to parse JSON: %s", e)
-            raise
-
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     # local test

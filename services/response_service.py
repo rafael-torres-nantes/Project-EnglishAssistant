@@ -39,7 +39,7 @@ class ResponseService:
             logger.error("Failed to build system prompt: %s", e)
             return f"Context:\n{context}\n\nPlease help the user with their English responses."
 
-    def _build_prompt(self, transcribed_text: str, context: str) -> str:
+    def _build_prompt(self, transcribed_text: str) -> str:
         return (
             f"[Meeting Audio Transcription]\n{transcribed_text}\n\n"
             f"Based on this meeting conversation, suggest appropriate responses "
@@ -59,7 +59,7 @@ class ResponseService:
         """
         try:
             system_prompt = self._build_system_prompt(context)
-            prompt = self._build_prompt(transcribed_text, context)
+            prompt = self._build_prompt(transcribed_text)
             return self.ai_service.run_text(prompt, system_prompt)
         except Exception as e:
             logger.error("Error generating response: %s", e)
@@ -76,7 +76,7 @@ class ResponseService:
             Pedaços de texto da resposta da IA.
         """
         system_prompt = self._build_system_prompt(context)
-        prompt = self._build_prompt(transcribed_text, context)
+        prompt = self._build_prompt(transcribed_text)
         yield from self.ai_service.run_text_stream(prompt, system_prompt)
 
     def _build_tutor_system_prompt(self, context: str) -> str:
