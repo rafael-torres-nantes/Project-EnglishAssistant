@@ -126,8 +126,12 @@ class AssistantController:
 
                 payload = self.audio_service.get_audio_chunk()
                 if payload is None and not force_process:
-                    time.sleep(0.1)
-                    continue
+                    if not is_speaking:
+                        time.sleep(0.1)
+                        continue
+                    # WASAPI Loopback não entrega chunks quando nada está tocando: o ~1s
+                    # de espera do get_audio_chunk conta como silêncio para fechar o bloco.
+                    silence_frames += max(1, int(1.0 / Settings.AUDIO_CHUNK_DURATION_SECONDS))
 
                 if payload is not None:
                     chunk, sample_rate, channels = payload

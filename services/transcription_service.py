@@ -85,7 +85,7 @@ class TranscriptionService:
         
         merged_audio = AudioHelpers.merge_audio_chunks(chunks)
 
-        if not self.is_speech(merged_audio):
+        if not self.is_speech(merged_audio, sample_rate, channels):
             return ""
 
         audio_array = self.audio_bytes_to_ndarray(merged_audio, sample_rate, channels)
