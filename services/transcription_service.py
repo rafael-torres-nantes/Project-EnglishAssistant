@@ -100,6 +100,50 @@ class TranscriptionService:
         text_parts = [segment.text for segment in segments]
         return TextHelpers.clean_transcription(" ".join(text_parts))
 
+    def transcribe_segments(self, samples: np.ndarray, language: str | None = None, initial_prompt: str | None = None):
+        """
+        Transcreve mantendo a fala literal, com o tempo de cada palavra, trecho a trecho.
+
+        O Whisper tende a apagar muletas; o `initial_prompt` com muletas o orienta a mantê-las.
+        O contexto entre trechos fica desligado para um trecho não contaminar o seguinte.
+
+        Args:
+            samples: Áudio float32 em 16 kHz mono.
+            language: Código do idioma; None detecta automaticamente.
+            initial_prompt: Texto que orienta o estilo da transcrição.
+
+        Yields:
+            Dicionários com "language", "text" e "words" (cada palavra com "text", "start", "end").
+        """
+        segments, info = self.model.transcribe(
+            samples,
+            language=language,
+            beam_size=self.beam_size,
+            vad_filter=True,
+            word_timestamps=True,
+            condition_on_previous_text=False,
+            initial_prompt=initial_prompt,
+        )
+        for segment in segments:
+            words = [{"text": word.word, "start": word.start, "end": word.end} for word in segment.words or []]
+            yield {"language": info.language, "text": segment.text, "words": words}
+
+    def warm_up(self) -> None:
+        """
+        Prepara GPU, VAD e alinhamento de palavras para a primeira fala real não pagar por eles.
+
+        Medido em 02/11/2026 com áudio de 16,3 s: a primeira transcrição levou 4,33 s sem esse
+        preparo completo, contra 0,60 s nas seguintes. São duas passadas porque, com VAD ligado,
+        o silêncio nem chega ao modelo.
+
+        Returns:
+            None
+        """
+        silence = np.zeros(16000, dtype=np.float32)
+        for options in ({"vad_filter": True}, {"vad_filter": False, "word_timestamps": True}):
+            segments, _ = self.model.transcribe(silence, language="en", beam_size=1, **options)
+            list(segments)
+
     def stop(self) -> None:
         """
         Finaliza o serviço de transcrição.
