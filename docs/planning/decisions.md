@@ -95,3 +95,92 @@ do `rich.Live`, duplicando o painel de sugestões na tela. O prompt de sistema c
 
 A entrada D2 descrevia a correção de UI de forma prospectiva; o comportamento correto só foi
 implementado nesta decisão (D3). Para o estado atual do `Live`, use D3 como referência.
+
+## D4 — Treinador de comunicação: limites, microfone no servidor e CLI pré-aquecida
+
+**Data**: 2026-11-02
+**Status**: ✅ Aplicado (`main.py coach`); falta o teste com voz humana
+
+### Limites do produto
+
+- O treinador só usa microfone e só dá retorno depois da fala. Não há modo nem contexto para
+  entrevista ou teste avaliado ao vivo.
+- Não lê `input_data/` nem usa `AudioCaptureService`; `tests/test_coach_controller.py` trava
+  isso, e `MicrophoneCaptureService` recusa dispositivo de loopback.
+- O roteiro da apresentação fica só na memória, e o log de latência não guarda texto da fala.
+
+### Decisões
+
+- **Microfone no servidor** (PyAudioWPatch), não no navegador: não existe upload de áudio, e o
+  servidor local escuta só em `127.0.0.1`.
+- **Biblioteca padrão** (`http.server`), sem dependência nova. Como a página liga o microfone,
+  o servidor recusa `Host` e `Origin` externos e exige `application/json`, o que bloqueia pedido
+  vindo de outro site aberto no navegador.
+- **Claude, mesmo com `AI_PROVIDER=gemini`**: o `agy.exe` não tem streaming mapeado neste
+  projeto. Sempre pelo login da CLI, sem chave de API e sem `--bare`.
+- **CLI pré-aquecida**: `--input-format stream-json` deixa o processo iniciado antes de o pedido
+  chegar. Cada processo atende um único pedido, então não acumula contexto nem muda a resposta.
+
+### Resultado medido
+
+Whisper `small` em CUDA, Sonnet, fala sintética de 16 a 18 s e `WHISPER_BEAM_SIZE=1`. Mediana de 3
+execuções, em segundos acumulados desde o fim da gravação:
+
+| Caso | Transcrição e métricas | 1ª palavra da IA | Total |
+|---|---|---|---|
+| Ensaio EN, CLI fria | 0,60 | 2,75 | 5,47 |
+| Ensaio EN, CLI aquecida | 0,60 | 2,10 | 5,05 |
+| Ensaio PT, CLI aquecida | 0,80 | 7,04 | 10,11 |
+| Ensaio PT, `COACH_EFFORT=low` | 0,75 | 5,05 | 7,76 |
+| Ensaio PT, `COACH_MODEL=haiku` | 0,66 | 4,99 | 6,92 |
+| Apresentação PT, CLI aquecida | 0,78 | 5,60 | 10,50 |
+
+- Em PT, as 3 execuções registradas com blocos geraram `thinking` antes do texto; em EN, nenhuma
+  das 3. É isso que afasta PT de EN, e `MAX_THINKING_TOKENS=0` não removeu o bloco.
+- Muletas e velocidade são locais e chegam em menos de 1 s, antes da IA, em qualquer idioma.
+- `COACH_EFFORT=low` e Haiku não foram adotados, porque trocam qualidade por velocidade. Ficam
+  como opção no `.env`, por decisão do Rafael.
+
+### Limitações conhecidas
+
+- A fala sintética não prova que o Whisper preserva muletas de voz humana.
+- A regra de não acrescentar conteúdo é só de prompt. Em 1 de 5 ideias testadas, o modelo ainda
+  acrescentou um pedido de conversa que não estava na ideia.
+
+### Como reproduzir
+
+```bash
+python scripts/benchmark_coach_latency.py <fala.wav> --mode rehearsal --runs 3
+python scripts/report_coach_latency.py
+```
+
+## D5 — Painel Listen no front-end
+
+**Data**: 2026-11-02
+**Status**: ✅ Aplicado (aba Listen em `web/index.html`)
+
+- **Separado do treinador:** a aba consome `/api/meeting/*` e captura só o áudio do sistema. A D4
+  continua valendo: o treinador não lê `input_data/` nem usa `AudioCaptureService`.
+- **Pontos em vez de roteiro:** o `MEETING_SYSTEM_PROMPT` devolve a pergunta e de 3 a 4 tópicos,
+  para a pessoa organizar a ideia e falar com as próprias palavras.
+- **Qualquer idioma:** `MEETING_WHISPER_LANGUAGE` vazio detecta o idioma de cada fala, e os tópicos
+  seguem o idioma da conversa.
+- **Escopo mantido:** o prompt continua sem sugestão quando a transcrição mostra entrevista de
+  emprego, teste ou avaliação.
+- **Contexto fora do Git:** `input_data/` fica ignorada, exceto arquivos já versionados, porque o
+  repositório é público.
+
+## D6 — Contextos e prompt editáveis pela interface
+
+**Data**: 2026-11-02
+**Status**: ✅ Aplicado (`services/listen_workspace_service.py`)
+
+- **Onde mora:** os contextos continuam em `input_data/`. A seleção, o prompt personalizado e a
+  lixeira ficam em `input_data/.listen/`, sem banco de dados.
+- **Parte editável e parte fixa:** a interface edita só `MEETING_INSTRUCTIONS`. A regra de escopo e
+  o contexto entram sempre depois, e o texto editável é escapado para não quebrar o `str.format`.
+- **Página separada:** `web/index.html`, `web/css/` e `web/js/`. O servidor atende só a lista fechada
+  `_ASSETS`, e a CSP deixou de aceitar script inline.
+- **Início com um clique:** `run.bat` chama o `run.py`, que sobe o `main.py coach`, espera a API e
+  abre o navegador. Ele substituiu `scripts/start_coach.ps1`. O `.bat` existe porque, em 02/11/2026,
+  nesta máquina o `.py` está associado ao VS Code (`UserChoice` = `VSCode.py`) e abriria no editor.

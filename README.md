@@ -81,39 +81,28 @@ O sistema opera em um pipeline contínuo:
 
 ```
 Project-EnglishAssistant/
-├── main.py
+├── run.bat                 # Duplo clique: chama o run.py
+├── run.py                  # Sobe o back-end e abre o navegador
+├── main.py                 # Comandos de terminal
 ├── requirements.txt
-├── requirements-dev.txt
 ├── .env.example
 ├── .gitignore
 ├── pytest.ini
-├── config/
-│   └── settings.py
-├── controllers/
-│   └── assistant_controller.py
-├── services/
-│   ├── audio_capture_service.py
-│   ├── transcription_service.py
-│   ├── claude_cli_service.py
-│   ├── gemini_cli_service.py
-│   ├── context_service.py
-│   └── response_service.py
-├── utils/
-│   ├── audio_helpers.py
-│   └── text_helpers.py
-├── output/
-├── input_data/
-│   └── .gitkeep
+├── config/                 # Configurações e variáveis de ambiente
+├── controllers/            # Listen, treinador, tutor e servidor local
+├── services/               # Áudio, transcrição, IA, contexto e análise de fala
+├── prompt_template/        # Prompts padrão
+├── utils/                  # Funções auxiliares
+├── web/
+│   ├── index.html
+│   ├── css/
+│   └── js/
+├── input_data/             # Contextos do Listen, fora do Git
+│   └── .listen/            # Seleção, prompt personalizado e lixeira
+├── output/                 # Logs de latência, fora do Git
+├── scripts/                # Benchmarks e relatórios
 ├── docs/
-│   ├── current-state/
-│   │   └── environment-assessment.md
-│   ├── planning/
-│   │   ├── open-questions.md
-│   │   └── risks.md
-│   └── implementation/
-│       └── roadmap-implementacao.md
 └── tests/
-    └── conftest.py
 ```
 
 ---
@@ -139,8 +128,17 @@ cp .env.example .env
 
 ### Uso
 
+Dê dois cliques em `run.bat`. Ele sobe o back-end e abre a página, onde ficam as abas Ensaio, Gestor,
+Apresentação e Listen. Na aba Listen, você marca, edita e cria contextos, ajusta o prompt e limpa a
+conversa. Feche a janela do terminal para encerrar.
+
+Pelo terminal:
+
 ```bash
-# Iniciar o assistente (modo padrão com Claude)
+# Subir tudo e abrir o navegador
+python run.py
+
+# Iniciar o assistente no terminal (modo padrão com Claude)
 python main.py listen
 
 # Usar Gemini como provedor
@@ -157,6 +155,12 @@ python main.py test-audio
 
 # Testar conexão com IA
 python main.py test-ai
+
+# Abrir o treinador de comunicação em http://127.0.0.1:8778/ (só microfone)
+python main.py coach
+
+# Testar o microfone por 3 segundos
+python main.py test-mic --seconds 3
 ```
 
 ### Adicionando Contexto
