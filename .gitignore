@@ -15,6 +15,7 @@ GEMINI.md
 # --- Arquivos temporários ---
 tmp/
 output/
+artifact/
 
 # --- Saída do graphify — derivada, reconstruível a qualquer momento ---
 .graphify/
@@ -29,6 +30,10 @@ graphify-out/
 .pytest_cache/
 __pycache__/
 *.pyc
+
+# --- Contextos pessoais do Listen: o repositório é público ---
+input_data/*
+!input_data/.gitkeep
 
 # --- Opções de performance (trade-off velocidade x precisão) — ver .env ---
 # Whisper (config/settings.py):
