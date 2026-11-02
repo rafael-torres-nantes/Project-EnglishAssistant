@@ -17,10 +17,18 @@ except ImportError:
     def load_dotenv(): pass
 
 from controllers.assistant_controller import AssistantController
+from controllers.coach_controller import CoachController
+from controllers.coach_web_controller import CoachWebController
+from controllers.meeting_controller import MeetingController
 from controllers.tutor_controller import TutorController
+from prompt_template.meeting_prompt import MEETING_REPLY_INSTRUCTION
+from services.listen_workspace_service import ListenWorkspaceService
 from services.context_service import ContextService
 from services.audio_capture_service import AudioCaptureService
+from services.microphone_capture_service import MicrophoneCaptureService
 from services.response_service import ResponseService
+from services.transcription_service import TranscriptionService
+from services.warm_claude_service import WarmClaudeService
 from utils.audio_helpers import AudioHelpers
 
 logger = logging.getLogger(__name__)
@@ -68,6 +76,14 @@ def main():
     # tutor command
     tutor_parser = subparsers.add_parser("tutor", help="Start an interactive English Tutor session")
     tutor_parser.add_argument("--provider", default=Settings.DEFAULT_AI_PROVIDER, help="claude or gemini")
+
+    # coach command
+    coach_parser = subparsers.add_parser("coach", help="Open the local communication coach (microphone only)")
+    coach_parser.add_argument("--port", type=int, default=Settings.HTTP_PORT, help="Local port")
+
+    # test-mic command
+    test_mic_parser = subparsers.add_parser("test-mic", help="Record the microphone and report the signal level")
+    test_mic_parser.add_argument("--seconds", type=float, default=3.0, help="Recording duration")
 
     args = parser.parse_args()
 
@@ -132,6 +148,35 @@ def main():
         provider = getattr(args, "provider", Settings.DEFAULT_AI_PROVIDER)
         controller = TutorController(provider=provider)
         controller.start()
+
+    elif args.command == "coach":
+        # O idioma só vale para transcribe(), usado pelo Listen; o treinador informa o seu em cada chamada.
+        transcription = TranscriptionService(model_size=Settings.COACH_WHISPER_MODEL, language=Settings.MEETING_WHISPER_LANGUAGE)
+        transcription.warm_up()
+        coach = CoachController(transcription, WarmClaudeService(), MicrophoneCaptureService())
+        workspace = ListenWorkspaceService()
+        meeting = MeetingController(
+            transcription=transcription,
+            response_service=ResponseService(Settings.MEETING_AI_PROVIDER, workspace.system_prompt_template(), MEETING_REPLY_INSTRUCTION),
+            context_service=workspace,
+            audio_factory=AudioCaptureService,
+            whisper_model_name=Settings.COACH_WHISPER_MODEL,
+            provider=Settings.MEETING_AI_PROVIDER,
+        )
+        web = CoachWebController(coach, port=args.port, meeting=meeting, workspace=workspace)
+        print(f"Treinador em {web.url()} (Ctrl+C para sair)")
+        web.start()
+
+    elif args.command == "test-mic":
+        microphone = MicrophoneCaptureService()
+        print(f"Gravando {args.seconds} s em: {microphone.start()}")
+        peak = 0.0
+        end_time = time.time() + args.seconds
+        while time.time() < end_time:
+            peak = max(peak, microphone.level)
+            time.sleep(0.05)
+        audio, sample_rate, channels = microphone.stop()
+        print(f"{len(audio)} bytes, {sample_rate} Hz, {channels} canais, pico de RMS={peak:.4f}")
 
 if __name__ == "__main__":
     main()

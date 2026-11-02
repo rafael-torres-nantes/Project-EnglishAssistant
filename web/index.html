@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Treinador de comunicação</title>
+<link rel="stylesheet" href="/css/coach.css">
+<link rel="stylesheet" href="/css/listen.css">
+</head>
+<body>
+
+<!-- Cabeçalho Principal -->
+<header class="header-bar">
+  <div class="header-left">
+    <h1>Treinador de comunicação</h1>
+    <div role="tablist" aria-label="Modos do treinador">
+      <button role="tab" id="tab-rehearsal" aria-selected="true" data-mode="rehearsal" tabindex="0">Ensaio</button>
+      <button role="tab" id="tab-manager" aria-selected="false" data-mode="manager" tabindex="-1">Gestor</button>
+      <button role="tab" id="tab-presentation" aria-selected="false" data-mode="presentation" tabindex="-1">Apresentação</button>
+      <button role="tab" id="tab-listen" aria-selected="false" data-mode="listen" tabindex="-1">Listen</button>
+    </div>
+  </div>
+
+  <button type="button" id="toggle-backstage" class="btn-backstage" aria-expanded="false" aria-controls="panel-backstage">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+    Bastidores
+  </button>
+</header>
+
+<main id="main-content">
+
+  <!-- Painel de Bastidores (Gaveta Lateral Slide-over) -->
+  <div id="backstage-overlay" class="backstage-backdrop" hidden></div>
+  <aside id="panel-backstage" class="backstage-drawer" hidden aria-label="Painel de Bastidores" role="dialog" aria-modal="true">
+    <div class="backstage-header">
+      <div class="backstage-header-left">
+        <h2 class="backstage-title">Bastidores</h2>
+        <span class="backstage-badge" id="backstage-mode-label">Modo: Ensaio</span>
+      </div>
+      <button type="button" id="close-backstage" class="btn-icon" aria-label="Fechar bastidores">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="backstage-block">
+      <h3>Prompt de sistema do modo atual</h3>
+      <pre class="code-box" id="backstage-system-prompt"></pre>
+      <div class="char-count" id="system-prompt-len"></div>
+    </div>
+    <div class="backstage-block">
+      <h3>Último pedido enviado</h3>
+      <div class="backstage-meta-note" id="backstage-request-label">Nenhum pedido enviado nesta sessão</div>
+      <pre class="code-box" id="backstage-request">Nenhum pedido enviado nesta sessão</pre>
+    </div>
+    <div class="backstage-block">
+      <h3>Contexto em uso</h3>
+      <p class="backstage-meta-note" id="backstage-context-note"></p>
+      <div class="backstage-badge" id="backstage-context-files">Arquivos em uso: nenhum (0 arquivos)</div>
+    </div>
+    <div class="backstage-block">
+      <h3>Modelo e provedor</h3>
+      <div class="backstage-meta-note" id="backstage-model-info">Carregando...</div>
+    </div>
+  </aside>
+
+  <!-- Modo Gestor -->
+  <section id="panel-manager" hidden aria-label="Modo Gestor">
+    <label for="idea">Sua ideia, em português ou inglês</label>
+    <textarea id="idea" placeholder="Ex.: preciso de mais dois dias porque os testes estão instáveis"></textarea>
+    <div class="manager-controls-row">
+      <label for="target">Frases em</label>
+      <select id="target">
+        <option value="same">mesmo idioma da ideia</option>
+        <option value="en">inglês</option>
+        <option value="pt">português</option>
+      </select>
+      <button type="button" class="btn-primary" id="generate">Gerar frases</button>
+    </div>
+  </section>
+
+  <!-- Modo Apresentação -->
+  <section id="panel-presentation" hidden aria-label="Modo Apresentação">
+    <label for="script">Roteiro (títulos Markdown ou parágrafos viram partes)</label>
+    <textarea id="script"></textarea>
+    <div class="presentation-controls-row">
+      <label for="file" class="btn-file-label" tabindex="0" role="button">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Selecionar arquivo (.md, .txt)
+      </label>
+      <input type="file" id="file" accept=".md,.txt" class="visually-hidden" aria-label="Carregar arquivo de roteiro">
+      <button type="button" class="btn-primary" id="load">Carregar roteiro</button>
+      <select id="part" disabled style="display:none;"></select>
+    </div>
+    <div class="parts-chips-container" id="parts-container" hidden>
+      <div class="parts-chips-list" id="parts-chips"></div>
+    </div>
+    <p class="text hint" id="part-text"></p>
+  </section>
+
+  <!-- Modo Listen -->
+  <section id="panel-listen" hidden aria-label="Modo Listen">
+    <div class="listen-console">
+      <button type="button" class="btn-primary" id="listen-toggle">Começar a ouvir</button>
+      <div class="listen-signal">
+        <span id="listen-status" aria-live="polite">Parado</span>
+        <div id="listen-meter" role="img" aria-label="Nível do áudio do sistema"><div id="listen-meter-fill"></div></div>
+      </div>
+      <div class="listen-console-actions">
+        <button type="button" class="listen-button" id="listen-generate" disabled>Organizar agora</button>
+        <button type="button" class="listen-button" id="listen-clear">Limpar conversa</button>
+      </div>
+    </div>
+    <div id="listen-error" role="alert"></div>
+
+    <div class="listen-layout">
+      <div class="listen-live">
+        <section class="listen-panel listen-answer" aria-label="Pontos para a resposta">
+          <h2>Organize sua resposta</h2>
+          <p id="listen-question"></p>
+          <div id="listen-suggestion" aria-live="polite"></div>
+          <p id="listen-timing"></p>
+        </section>
+        <section class="listen-panel" aria-label="Transcrição">
+          <h2>O que foi dito</h2>
+          <div id="listen-finals"></div>
+          <p id="listen-partial"></p>
+        </section>
+      </div>
+
+      <aside class="listen-panel listen-prep" aria-label="Preparação">
+        <div class="listen-switch" role="group" aria-label="O que editar">
+          <button type="button" id="listen-show-context" aria-pressed="true">Contexto</button>
+          <button type="button" id="listen-show-prompt" aria-pressed="false">Prompt</button>
+        </div>
+
+        <div id="listen-context-view">
+          <div class="listen-prep-row">
+            <p id="listen-context-count"></p>
+            <div class="listen-link-group">
+              <button type="button" class="listen-link" id="listen-select-all">Todos</button>
+              <button type="button" class="listen-link" id="listen-select-none">Nenhum</button>
+            </div>
+          </div>
+          <ul id="listen-context-list"></ul>
+          <div class="listen-prep-actions">
+            <button type="button" class="listen-button" id="listen-context-new">Novo contexto</button>
+            <label class="listen-button" for="listen-context-file" tabindex="0" id="listen-context-import">Importar arquivo</label>
+            <input type="file" id="listen-context-file" accept=".md,.txt" class="visually-hidden" tabindex="-1" aria-label="Importar arquivo de contexto">
+          </div>
+        </div>
+
+        <form id="listen-editor" hidden>
+          <button type="button" class="listen-link listen-back" id="listen-editor-back">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+            <span>Voltar para a lista</span>
+          </button>
+          <label for="listen-editor-name">Nome do arquivo</label>
+          <input type="text" id="listen-editor-name" autocomplete="off" spellcheck="false" placeholder="reuniao-cliente.md">
+          <label for="listen-editor-content">Conteúdo</label>
+          <textarea id="listen-editor-content" spellcheck="false" placeholder="Escreva o que a IA precisa saber: quem você é, o assunto, nomes e fatos."></textarea>
+          <div class="listen-prep-actions">
+            <button type="submit" class="btn-primary" id="listen-editor-save">Salvar</button>
+            <button type="button" class="listen-button listen-danger" id="listen-editor-delete">Apagar</button>
+          </div>
+        </form>
+
+        <form id="listen-prompt-view" hidden>
+          <div class="listen-prep-row">
+            <label for="listen-prompt-text">Instruções para a IA</label>
+            <span id="listen-prompt-badge"></span>
+          </div>
+          <textarea id="listen-prompt-text" spellcheck="false"></textarea>
+          <div class="listen-prep-actions">
+            <button type="submit" class="btn-primary" id="listen-prompt-save">Salvar prompt</button>
+            <button type="button" class="listen-button" id="listen-prompt-reset">Restaurar padrão</button>
+          </div>
+          <details class="listen-fixed">
+            <summary>Regra fixa, sempre enviada</summary>
+            <pre id="listen-prompt-scope"></pre>
+          </details>
+        </form>
+
+        <p id="listen-note" role="status" aria-live="polite">As mudanças valem a partir da próxima sugestão.</p>
+      </aside>
+    </div>
+  </section>
+
+  <!-- A Cabine Acústica de Gravação -->
+  <section class="cabin-stage" id="cabin-stage" aria-label="Cabine de Gravação">
+    <div class="wave-container">
+      <canvas id="waveform" width="1080" height="80" role="img" aria-label="Visualização acústica do microfone"></canvas>
+    </div>
+
+    <div class="record-btn-wrapper">
+      <button type="button" id="record" aria-label="Gravar">
+        <span class="record-icon" id="record-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+        </span>
+        <span class="record-label" id="record-text">Gravar</span>
+        <span class="record-subtext" id="record-sub">Clique para falar</span>
+      </button>
+    </div>
+
+    <p class="support-text" id="support-text">Fale. O retorno chega quando você parar.</p>
+
+    <div class="cabin-controls-row">
+      <div class="lang-selector-group">
+        <label for="language">Idioma</label>
+        <select id="language">
+          <option value="">detectar</option>
+          <option value="pt">português</option>
+          <option value="en">inglês</option>
+        </select>
+      </div>
+
+      <div id="meter" role="img" aria-label="Nível do microfone"><div></div></div>
+      <span id="status" class="hint" aria-live="polite"></span>
+    </div>
+
+    <div id="error" role="alert"></div>
+  </section>
+
+  <!-- Grade de Resultados (Transcrição e Retorno da IA) -->
+  <div class="results-grid" id="results-wrapper">
+    <section class="card-result" id="transcript-card" hidden>
+      <h2>Transcrição (muletas marcadas)</h2>
+      <div class="text" id="transcript"></div>
+      <div id="metrics"></div>
+    </section>
+
+    <section class="card-result" id="ai-card" hidden>
+      <h2>Retorno</h2>
+      <div id="ai" aria-live="polite"></div>
+    </section>
+  </div>
+
+  <!-- Latência Detalhada -->
+  <section class="card" id="latency-card" hidden>
+    <div class="latency-header-row">
+      <h2>Latência (segundos acumulados desde o clique)</h2>
+      <span id="latency-note"></span>
+    </div>
+    <div id="timeline-container"></div>
+    <details class="latency-details">
+      <summary class="latency-summary">Ver etapas detalhadas da latência</summary>
+      <table class="latency-table">
+        <tbody id="latency"></tbody>
+      </table>
+    </details>
+  </section>
+
+</main>
+
+<script src="/js/coach.js"></script>
+<script src="/js/listen.js"></script>
+</body>
+</html>
