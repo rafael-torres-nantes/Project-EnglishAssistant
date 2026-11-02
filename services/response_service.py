@@ -11,12 +11,19 @@ logger = logging.getLogger(__name__)
 class ResponseService:
     """Gera sugestões de resposta e respostas de tutor via Claude ou Gemini CLI."""
 
-    def __init__(self, provider: str):
+    DEFAULT_REPLY_INSTRUCTION = (
+        "Based on this meeting conversation, suggest appropriate responses "
+        "I could give in English.\nConsider the context provided in the system prompt."
+    )
+
+    def __init__(self, provider: str, system_prompt_template: str = CONVERSATIONAL_SYSTEM_PROMPT, reply_instruction: str = DEFAULT_REPLY_INSTRUCTION):
         """
         Função de inicialização do serviço de geração de respostas.
 
         Args:
             provider (str): Provedor de IA a usar ("claude" ou "gemini").
+            system_prompt_template (str): Template do prompt de sistema da reunião.
+            reply_instruction (str): Pedido enviado depois da transcrição.
 
         Returns:
             None
@@ -25,6 +32,8 @@ class ResponseService:
             ValueError: Se o provider não for "claude" nem "gemini".
         """
         self.provider = provider.lower()
+        self.system_prompt_template = system_prompt_template
+        self.reply_instruction = reply_instruction
         if self.provider == 'claude':
             self.ai_service = ClaudeCLIService()
         elif self.provider == 'gemini':
@@ -34,17 +43,27 @@ class ResponseService:
 
     def _build_system_prompt(self, context: str) -> str:
         try:
-            return CONVERSATIONAL_SYSTEM_PROMPT.format(meeting_context=context)
+            return self.system_prompt_template.format(meeting_context=context)
         except Exception as e:
             logger.error("Failed to build system prompt: %s", e)
             return f"Context:\n{context}\n\nPlease help the user with their English responses."
 
     def _build_prompt(self, transcribed_text: str) -> str:
-        return (
-            f"[Meeting Audio Transcription]\n{transcribed_text}\n\n"
-            f"Based on this meeting conversation, suggest appropriate responses "
-            f"I could give in English.\nConsider the context provided in the system prompt."
-        )
+        return f"[Meeting Audio Transcription]\n{transcribed_text}\n\n{self.reply_instruction}"
+
+    def preview_prompts(self, transcribed_text: str, context: str) -> tuple[str, str]:
+        """Devolve os prompts de sistema e de usuário que seriam enviados na geração.
+
+        Args:
+            transcribed_text: Texto transcrito da fala capturada na reunião.
+            context: Conteúdo de contexto carregado da pasta de contexto.
+
+        Returns:
+            Tupla contendo (system_prompt, prompt).
+        """
+        system_prompt = self._build_system_prompt(context)
+        prompt = self._build_prompt(transcribed_text)
+        return system_prompt, prompt
 
     def generate_response(self, transcribed_text: str, context: str) -> str:
         """
