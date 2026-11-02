@@ -53,6 +53,18 @@ class Settings:
     COACH_WARM_MAX_AGE_SECONDS = 600
     COACH_LONG_PAUSE_SECONDS = 1.0
     COACH_LATENCY_LOG = OUTPUT_DIR / "coach_latency.jsonl"
+    # Duração máxima em segundos de um bloco contínuo de fala antes de forçar transcrição final.
+    MEETING_MAX_UTTERANCE_SECONDS = 45
+    # Tempo limite em segundos sem assinantes SSE para encerrar a sessão de reunião automaticamente.
+    MEETING_ORPHAN_SECONDS = 20
+    # Intervalo em segundos entre pings de heartbeat nas conexões SSE de reunião.
+    MEETING_HEARTBEAT_SECONDS = 10
+    # Limite máximo de transcrições finais mantidas no snapshot de histórico da sessão.
+    MEETING_MAX_FINALS = 50
+    # Claude por padrão: medido em 02/11/2026, o agy sem streaming levou 15,5 s para responder "ok".
+    MEETING_AI_PROVIDER = os.environ.get("MEETING_AI_PROVIDER", "claude").strip() or "claude"
+    # Vazio (padrão) detecta o idioma de cada fala, porque a reunião pode não ser em inglês.
+    MEETING_WHISPER_LANGUAGE = os.environ.get("MEETING_WHISPER_LANGUAGE", "").strip() or None
 
 
     @staticmethod
