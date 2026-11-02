@@ -150,6 +150,9 @@ class ClaudeCLIService:
                 process.kill()
                 logger.error("Claude CLI timed out after %d seconds.", self.timeout)
                 raise
+            finally:
+                if process.poll() is None:
+                    process.kill()
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
