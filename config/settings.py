@@ -40,6 +40,19 @@ class Settings:
     OUTPUT_DIR = Path("output")
     HTTP_HOST = "127.0.0.1"
     HTTP_PORT = 8778
+    # Treinador de comunicação: separado do `listen` para não alterar o assistente de reuniões.
+    # Sonnet é o default porque chegou à 1ª palavra antes do Haiku: medido em 02/11/2026, 3
+    # execuções por modelo, processo frio: Sonnet 2,65 s, Haiku 3,14 s (o Haiku gera bloco thinking).
+    COACH_MODEL = os.environ.get("COACH_MODEL", "sonnet")
+    COACH_EFFORT = os.environ.get("COACH_EFFORT", "").strip()
+    COACH_WHISPER_MODEL = os.environ.get("COACH_WHISPER_MODEL", "small")
+    COACH_MIC_DEVICE_INDEX = int(os.environ["COACH_MIC_DEVICE_INDEX"]) if os.environ.get("COACH_MIC_DEVICE_INDEX", "").strip() else None
+    COACH_MAX_RECORDING_SECONDS = 900
+    COACH_MAX_BODY_BYTES = 256 * 1024
+    COACH_MAX_DRAIN_BYTES = 8 * 1024 * 1024
+    COACH_WARM_MAX_AGE_SECONDS = 600
+    COACH_LONG_PAUSE_SECONDS = 1.0
+    COACH_LATENCY_LOG = OUTPUT_DIR / "coach_latency.jsonl"
 
 
     @staticmethod
